@@ -1,7 +1,84 @@
-/// <reference path="Player.ts" />
-/// <reference path="GameState.ts" />
-
 module Dimension {
+  "use strict";
+
+  /**
+   * Possible states for a game object
+   */
+  export enum GameState {
+    // Choosing spells to cast
+    CAST_SPELL,
+    // About to attack
+    ATTACK,
+    // Choose a target for the current action
+    TARGET,
+    // Summoning a minion
+    SUMMON,
+    // Choose from multiple options for a card
+    CHOOSE_ONE,
+    // Discard cards from starting cards
+    MULLIGAN
+  }
+
+  /**
+   * Possible events sent during a game
+   */
+  export enum GameEvent {
+    // A character attacked another character
+    ATTACK,
+    // Damage was received by a character
+    DAMAGE,
+    // Damage was dealt to a character
+    DAMAGE_DEALT,
+    // Start of a player's turn
+    START_OF_TURN,
+    // End of a player's turn
+    END_OF_TURN,
+    // Death of a minion
+    DEATH,
+    // Casting of a spell card
+    CAST,
+    // Healing of a character
+    HEAL,
+    // Drawing of a card
+    DRAW,
+    // Triggerable secret aura triggered
+    SECRET_REVEALED,
+    // Minion was summoned
+    SUMMON
+  }
+
+  /**
+   * Available filters for triggers and targeting
+   */
+  export enum TargetFilter {
+    // Any Hero (player) object
+    HERO,
+    // Any Minion object
+    MINION,
+    // Any enemy Hero object
+    ENEMY_HERO,
+    // Any enemy Minion object
+    ENEMY_MINION,
+    // Any friendly Hero object
+    FRIENDLY_HERO,
+    // Any friendly Minion object
+    FRIENDLY_MINION,
+    // Any enemy character
+    ENEMY,
+    // Any friendly character
+    FRIENDLY,
+    // Any character
+    CHARACTER,
+    // Any damaged character
+    DAMAGED
+  }
+
+  /**
+   * Targeting filter interface
+   */
+  export interface ITargetFilter {
+    (game: Game): boolean;
+  }
 
   /**
    * Represents a single Dimension Game
@@ -61,6 +138,42 @@ module Dimension {
      */
     public minionCounter: number = 0;
 
+    private targetFilters: {};
+
+    constructor() {
+      var self = this;
+
+      this.targetFilters = {};
+      this.targetFilters[TargetFilter.HERO] = function(game: Game) {
+        return (this instanceof Player);
+      };
+      this.targetFilters[TargetFilter.MINION] = function(game: Game) {
+          return (this instanceof Minion);
+      };
+      this.targetFilters[TargetFilter.ENEMY_HERO] = function(game: Game) {
+        return (this instanceof Player) && (this != game.currentPlayer());
+      };
+      this.targetFilters[TargetFilter.ENEMY_MINION] = function(game: Game) {
+        return (this instanceof Minion) && (this.controller != game.currentPlayer());
+      };
+      this.targetFilters[TargetFilter.FRIENDLY_HERO] = function(game: Game) {
+        return (this instanceof Player) && (this.controller == game.currentPlayer());
+      };
+      this.targetFilters[TargetFilter.FRIENDLY_MINION] = function(game: Game) {
+        return (this instanceof Minion) && (this.controller == game.currentPlayer());
+      };
+      this.targetFilters[TargetFilter.CHARACTER] = function(game: Game) {
+        return (self.filter(this, TargetFilter.HERO) || self.filter(this, TargetFilter.MINION));
+      };
+      this.targetFilters[TargetFilter.DAMAGED] = function(game: Game) {
+        return this.isDamaged();
+      };
+    }
+
+    public filter(self: any, filt: TargetFilter): boolean {
+      return this.targetFilters[filt].call(self, this);
+    }
+
     /**
      * Get the currently in-turn player object
      * @returns {Player}
@@ -90,7 +203,7 @@ module Dimension {
       // Draw mulligan cards
       for (var pi = 0, pc = this.players.length; pi < pc; pi++) {
         var player: Player = this.players[pi];
-        while (player.hand.count < 3) {
+        while (player.hand.size() < 3) {
           player.drawCard();
         }
       }
@@ -108,7 +221,7 @@ module Dimension {
 
       for (var pi = 0, pc = this.players.length; pi < pc; pi++) {
         var player: Player = this.players[pi];
-        while (player.hand.count < 4) {
+        while (player.hand.size() < 4) {
           player.drawCard();
         }
       }
@@ -194,7 +307,8 @@ module Dimension {
       _.each(this.players, (player: Player) => {
         _.each(player.board, (minion: Minion) => {
           if (minion.getHealth() <= 0) {
-            minion.controller.board.remove(minion);
+            var idx: number = minion.controller.board.indexOf(minion);
+            minion.controller.board.splice(idx, 1);
             minion.onEvent(GameEvent.DEATH, minion, null);
           }
         });
@@ -209,7 +323,7 @@ module Dimension {
     public aurasByStat(stat: Stat): Collections.LinkedList<Aura> {
       var list: Collections.LinkedList<Aura> = new Collections.LinkedList<Aura>();
 
-      for (var ai = 0, ac = this.globalAuras.count; ai < ac; ai++) {
+      for (var ai = 0, ac = this.globalAuras.size(); ai < ac; ai++) {
         var aura: Aura = this.globalAuras[ai];
         if (aura.stat == stat) {
           list.add(aura);
@@ -228,7 +342,7 @@ module Dimension {
       var sum: number = 0;
       var auras: Collections.LinkedList<Aura> = this.aurasByStat(stat);
 
-      for (var ai = 0, ac = auras.count; ai < ac; ai++) {
+      for (var ai = 0, ac = auras.size(); ai < ac; ai++) {
         sum += auras[ai].amountFor(this);
       }
 
@@ -250,7 +364,7 @@ module Dimension {
       }
 
       // Work magic on all of them
-      for (var ci = 0, cc = chars.count; ci < cc; ci++) {
+      for (var ci = 0, cc = chars.size(); ci < cc; ci++) {
         var c: Character = chars[ci];
 
         // FIXME: Unfreezing shouldn't belong here
@@ -260,17 +374,25 @@ module Dimension {
 
         c.onEvent(GameEvent.END_OF_TURN, c, null);
 
+        var removeExpiredFrom: Function = (list: Collections.LinkedList<Aura>) => {
+          list.forEach((aura: Aura): boolean => {
+            if (aura.expires)
+              list.remove(aura);
+            return true;
+          });
+        };
+
         // Remove global auras
-        this.globalAuras = _.remove(this.globalAuras, 'expires');
+        removeExpiredFrom(this.globalAuras);
 
         // Remove character auras
-        c.auras = _.remove(c.auras, 'expires');
+        removeExpiredFrom(c.auras);
 
         // If the character is a player, remove weapon auras too
         if (c instanceof Player) {
           var player: Player = <Player>c;
           if (player.hasWeapon()) {
-            player.weapon.auras = _.remove(player.weapon.auras, 'expires');
+            removeExpiredFrom(player.weapon.auras);
           }
         }
       }
@@ -314,7 +436,7 @@ module Dimension {
     /**
      * The filter to use when targeting characters
      */
-    public filter: Function;
+    public activeFilter: TargetFilter;
 
     /**
      * The handler to invoke on the targeted character
@@ -326,16 +448,16 @@ module Dimension {
      * @param filter The filtering function used
      * @returns {Collections.LinkedList<Character>}
      */
-    public validTargetsWithFilter(filter: Function): Collections.LinkedList<Character> {
+    public validTargetsWithFilter(filter: TargetFilter): Collections.LinkedList<Character> {
       var targets: Collections.LinkedList<Character> = new Collections.LinkedList<Character>();
 
       _.each(this.players, (player: Player) => {
-        if (this.invoke(filter, player, null) == true) {
+        if (this.filter(player, filter) == true) {
           targets.add(player);
         }
 
         _.each(player.board, (minion: Minion) => {
-          if (!minion.shroud && (this.invoke(filter, minion, null) == true)) {
+          if (!minion.shroud && (this.filter(minion, filter) == true)) {
             targets.add(minion);
           }
         });
@@ -349,8 +471,8 @@ module Dimension {
      * @param filter The filter used
      * @returns {number}
      */
-    public targetsCountWithFilter(filter: Function): number {
-      return this.validTargetsWithFilter(filter).count;
+    public targetsCountWithFilter(filter: TargetFilter): number {
+      return this.validTargetsWithFilter(filter).size();
     }
 
     /**
@@ -358,11 +480,11 @@ module Dimension {
      * @param filter  The filter function to use
      * @param handler The callback handler to invoke on the targeted character
      */
-    public chooseTarget(filter: Function, handler: Function): void {
+    public chooseTarget(filter: TargetFilter, handler: Function): void {
       if (this.targetsCountWithFilter(filter) == 0)
         return;
 
-      this.filter = filter;
+      this.activeFilter = filter;
       this.onTargetHandler = handler;
       this.state = GameState.TARGET;
     }
@@ -386,21 +508,25 @@ module Dimension {
     /**
      * !!! ENUMERATING TARGETS
      */
-    public forEachTargetWithFilter(filter: Function, handler: Function) {
-      this.forEachTarget(this.validTargetsWithFilter(filter), handler);
-    }
-
-    public forNumberOfRandomTargetsWithFilter(count: number, filter: Function, handler: Function): void {
+    public forEachTargetWithFilter(filter: TargetFilter, handler: Function) {
       var targets: Collections.LinkedList<Character> = this.validTargetsWithFilter(filter);
-      this.forEachTarget(_.sample(targets, count), handler);
+      var targetsArr = targets.toArray();
+      this.forEachTarget(targetsArr, handler);
     }
 
-    public forEachTargetWithFilterExceptRandom(count: number, filter: Function, handler: Function): void {
+    public forNumberOfRandomTargetsWithFilter(count: number, filter: TargetFilter, handler: Function): void {
       var targets: Collections.LinkedList<Character> = this.validTargetsWithFilter(filter);
-      this.forEachTarget(_.sample(targets, targets.count - count), handler);
+      var targetsArr = targets.toArray();
+      this.forEachTarget(_.sample(targetsArr, count), handler);
     }
 
-    public forEachTarget(targets: Collections.LinkedList<Character>, handler: Function): void {
+    public forEachTargetWithFilterExceptRandom(count: number, filter: TargetFilter, handler: Function): void {
+      var targets: Collections.LinkedList<Character> = this.validTargetsWithFilter(filter);
+      var targetsArr = targets.toArray();
+      this.forEachTarget(_.sample(targetsArr, targets.size() - count), handler);
+    }
+
+    public forEachTarget(targets: Character[], handler: Function): void {
       _.each(targets, (char: Character) => {
         if (char.getHealth() > 0) {
           this.invoke(handler, char, null);
@@ -411,7 +537,7 @@ module Dimension {
     /**
      * !!! DAMAGING TARGETS
      */
-    private assignDamageForEach(list: Collections.LinkedList<Character>, damage: number, source: Character): void {
+    private assignDamageForEach(list: Character[], damage: number, source: Character): void {
       _.each(list, (character: Character) => {
         character.combatDamage(damage, source);
         character.onEvent(GameEvent.DAMAGE, character, source);
@@ -419,22 +545,30 @@ module Dimension {
       this.postDamage();
     }
 
-    public damageForEachWithFilter(filter: Function, damage: number, source: Character): void {
-      this.assignDamageForEach(this.validTargetsWithFilter(filter), damage, source);
+    public damageForEachWithFilter(filter: TargetFilter, damage: number, source: Character): void {
+      var targets: Collections.LinkedList<Character> = this.validTargetsWithFilter(filter);
+      var targetsArr = targets.toArray();
+      this.assignDamageForEach(targetsArr, damage, source);
     }
 
-    public spellDamageForEachWithFilter(filter: Function, damage: number, source: Character): void {
+    public spellDamageForEachWithFilter(filter: TargetFilter, damage: number, source: Character): void {
       damage += source.owner.sumAurasByStat(Stat.SPELL_POWER);
-      this.assignDamageForEach(this.validTargetsWithFilter(filter), damage, source);
+      var targets: Collections.LinkedList<Character> = this.validTargetsWithFilter(filter);
+      var targetsArr = targets.toArray();
+      this.assignDamageForEach(targetsArr, damage, source);
     }
 
-    public damageForNumberOfRandom(count: number, filter: Function, damage: number, source: Character): void {
-      this.assignDamageForEach(_.sample(this.validTargetsWithFilter(filter), count), damage, source)
+    public damageForNumberOfRandom(count: number, filter: TargetFilter, damage: number, source: Character): void {
+      var targets: Collections.LinkedList<Character> = this.validTargetsWithFilter(filter);
+      var targetsArr = targets.toArray();
+      this.assignDamageForEach(_.sample(targetsArr, count), damage, source)
     }
 
-    public spellDamageForNumberOfRandom(count: number, filter: Function, damage: number, source: Character): void {
+    public spellDamageForNumberOfRandom(count: number, filter: TargetFilter, damage: number, source: Character): void {
       damage += source.owner.sumAurasByStat(Stat.SPELL_POWER);
-      this.assignDamageForEach(_.sample(this.validTargetsWithFilter(filter), count), damage, source)
+      var targets: Collections.LinkedList<Character> = this.validTargetsWithFilter(filter);
+      var targetsArr = targets.toArray();
+      this.assignDamageForEach(_.sample(targetsArr, count), damage, source)
     }
 
   }

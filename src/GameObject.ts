@@ -1,8 +1,3 @@
-/// <reference path="GameEvent.ts" />
-/// <reference path="Game.ts" />
-/// <reference path="Player.ts" />
-/// <reference path="Aura.ts" />
-
 module Dimension {
 
   class EventObject {
@@ -36,7 +31,7 @@ module Dimension {
       return (this.controller == null) ? this.owner : this.controller;
     }
 
-    runEvent(e: GameEvent, source: any, other: any) {
+    public runEvent(e: GameEvent, source: any, other: any) {
       var auras: Array<Aura> = this.getAuras();
       for (var i = 0, l = auras.length; i < l; i++) {
         this.game.aura = auras[i];
@@ -73,7 +68,7 @@ module Dimension {
       this.removeObject(eo, this.eventStack);
     }
 
-    auras: Array<Aura> = [];
+    auras: Collections.LinkedList<Aura> = new Collections.LinkedList<Aura>();
 
     public addAura(stat: Stat, amount: number, expires: boolean, global: boolean = false): Aura {
       var aura: Aura = new Aura(this, stat, amount, expires);
@@ -81,7 +76,7 @@ module Dimension {
       if (global)
         this.game.globalAuras.add(aura);
       else
-        this.auras.push(aura);
+        this.auras.add(aura);
 
       return aura;
     }
@@ -92,7 +87,7 @@ module Dimension {
       if (global)
         this.game.globalAuras.add(aura);
       else
-        this.auras.push(aura);
+        this.auras.add(aura);
 
       return aura;
     }
@@ -100,16 +95,16 @@ module Dimension {
     public addAuraFromCard(card: Card): Aura {
       var aura: Aura = new Aura(this, Stat.NONE, 0, false);
       card.applyToAura(aura);
-      this.auras.push(aura);
+      this.auras.add(aura);
 
       return aura;
     }
 
     public removeAuras(): void {
-      this.auras.length = 0;
+      this.auras.clear();
       var ggAuras = this.game.globalAuras;
 
-      for (var i = 0, l = ggAuras.count; i < l; i++) {
+      for (var i = 0, l = ggAuras.size(); i < l; i++) {
         if (ggAuras[i].owner == this) {
           this.removeObject(ggAuras[i], this.game.globalAuras);
         }
@@ -119,10 +114,10 @@ module Dimension {
     public getAuras(): Array<Aura> {
       var auras: Array<Aura> = [];
 
-      auras = auras.concat(this.auras);
-      auras = auras.concat(this.getController().secrets);
-      auras = auras.concat(this.getController().opponent.secrets);
-      auras = auras.concat(this.game.globalAuras);
+      auras = auras.concat(this.auras.toArray());
+      auras = auras.concat(this.getController().secrets.toArray());
+      auras = auras.concat(this.getController().opponent.secrets.toArray());
+      auras = auras.concat(this.game.globalAuras.toArray());
 
       return auras;
     }

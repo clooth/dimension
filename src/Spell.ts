@@ -1,6 +1,3 @@
-/// <reference path="Card.ts" />
-/// <reference path="Player.ts" />
-
 module Dimension {
 
   export class Spell {

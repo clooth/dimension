@@ -1,14 +1,19 @@
-/// <reference path="GameObject.ts" />
-/// <reference path="Card.ts" />
-/// <reference path="Stat.ts" />
-
 module Dimension {
 
   export class Weapon extends GameObject {
     public card: Card;
     public attack: number;
     public durability: number;
-    public durabilityLoss: number;
+    public durabilityLoss: number = 1;
+
+    constructor(name: string, attack: number, durability: number, card: Card, owner: Player) {
+        super(owner.game);
+        this.card = card;
+        this.owner = this.controller = owner;
+        this.attack = attack;
+        this.durability = durability;
+        this.durabilityLoss = card.durabilityLoss;
+    }
 
     public getAttack(): number {
       return Math.max(0, this.attack + this.sumAurasByStat(Stat.ATTACK));

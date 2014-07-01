@@ -1,6 +1,3 @@
-/// <reference path="Character.ts" />
-/// <reference path="Card.ts" />
-
 module Dimension {
 
   export class Minion extends Character {

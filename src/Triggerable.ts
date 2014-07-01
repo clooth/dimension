@@ -1,6 +1,3 @@
-/// <reference path="GameEvent.ts" />
-/// <reference path="Aura.ts" />
-
 module Dimension {
 
   export class Triggerable {
@@ -15,6 +12,9 @@ module Dimension {
     public onAttack: Function;
     public onSecretRevealed: Function;
     public onSummon: Function;
+
+    constructor() {
+    }
 
     public getTrigger(e : GameEvent) : Function {
       switch (e) {
