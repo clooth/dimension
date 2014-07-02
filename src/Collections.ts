@@ -523,6 +523,11 @@ if (typeof object_create !== 'function') {
             return node.element;
         }
 
+        copyAtIndex(index: number): T {
+            var value: T = this.elementAtIndex(index);
+            return Collections.deepCopy(value);
+        }
+
         /**
          * Returns the index in this list of the first occurrence of the
          * specified element, or -1 if the List does not contain this element.

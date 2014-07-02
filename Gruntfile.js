@@ -8,15 +8,17 @@ module.exports = function (grunt) {
   // Configure grunt here
   grunt.initConfig({
     ts: {
-      cards: {
-        src: "data/**/*.ts",
-        watch: "data",
-        outDir: "lib",
-        sourceMap: false
-      },
       dist: {
-        src: "src/_reference.ts",
+        src: ["src/_reference.ts", "src/data/**/*.ts"],
         out: "lib/dim.js",
+        sourceMap: true,
+        options: {
+          declaration: true
+        }
+      },
+      public: {
+        src: ["public/src/_reference.ts"],
+        out: ["public/dist/element.js"],
         sourceMap: true,
         options: {
           declaration: true
@@ -31,14 +33,19 @@ module.exports = function (grunt) {
         files: {
           'lib/dim.min.js': ['lib/dim.js']
         }
+      },
+      public: {
+        files: {
+          'public/dist/element.min.js': ['public/dist/element.js']
+        }
       }
     },
     watch: {
-      files: ["src/**/*.ts"],
-      tasks: ["ts:dist", "uglify:dist"]
+      files: ["src/**/*.ts", "public/src/**/*.ts"],
+      tasks: ["ts:dist", "uglify:dist", "ts:public", "uglify:public"]
     }
   });
 
-  grunt.registerTask("dist", ["ts:dist"]);
-  grunt.registerTask("cards", ["ts:cards"]);
+  grunt.registerTask("dist", ["ts:dist", "uglify:dist"]);
+  grunt.registerTask("public", ["ts:public", "uglify:public"]);
 }

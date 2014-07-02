@@ -7,8 +7,8 @@ module Dimension {
     static fromString(deckString: string) {
       var deck: Deck = new Deck();
 
-      var lines: string[] = deckString.split("\n");
-      deck.hero = lines.shift();
+      var lines: string[] = deckString.trim().split("\n");
+      deck.hero = lines.shift().trim();
 
       var line;
       for (var i = 0, l = lines.length; i < l; i++) {
@@ -18,12 +18,17 @@ module Dimension {
         var spell: Card = Card.get(data[1].trim());
         if (spell != null) {
           _.times(~~data[0].trim(), () => {
-            deck.spells.add(spell);
+            deck.spells.add(Card.get(data[1].trim()));
           });
         }
       }
 
       return deck;
+    }
+
+    static fromDOM(domId: string) {
+      var str = document.getElementById(domId).textContent;
+      return Deck.fromString(str);
     }
   }
 

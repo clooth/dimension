@@ -5,10 +5,10 @@ module Dimension {
    */
   export class Aura extends Triggerable {
     /**
-     * The game object this Aura belongs to
-     * @type {GameObject}
+     * The match object this Aura belongs to
+     * @type {MatchObject}
      */
-    public owner : GameObject;
+    public owner : MatchObject;
 
     /**
      * Expires at the end of the owner's turn
@@ -41,7 +41,7 @@ module Dimension {
     public calculation : Function;
 
     /**
-     * The handler that's triggered on the game when this aura is triggered
+     * The handler that's triggered on the match when this aura is triggered
      * @type {Function}
      */
     public onTrigger : Function;
@@ -49,12 +49,12 @@ module Dimension {
   /**
    * Create a new Aura instance
    *
-   * @param {GameObject} owner   The game object that owns this aura
+   * @param {MatchObject} owner   The match object that owns this aura
    * @param {Stat}       stat    The Stat this aura is buffing
    * @param {number}     amount  The amount its buffing it by
    * @param {boolean}    expires Whether or not it expires next turn
    */
-    constructor(owner: GameObject, stat: Stat, amount: number, expires: boolean) {
+    constructor(owner: MatchObject, stat: Stat, amount: number, expires: boolean) {
       super();
       this.owner = owner;
       this.stat = stat;
@@ -66,13 +66,13 @@ module Dimension {
     /**
      * Create a dynamically calculated aura
      *
-     * @param  {GameObject} owner       The game object which owns this aura
+     * @param  {MatchObject} owner       The match object which owns this aura
      * @param  {Stat}       stat        The stat the aura is buffing
      * @param  {Function}   calculation The function that calculates the amount
      * @param  {boolean}    expires     Whether or not it expires next turn
      * @return {Aura}                   The newly created Aura
      */
-    public static createDynamic(owner: GameObject, stat: Stat, calculation: Function, expires: boolean) : Aura {
+    public static createDynamic(owner: MatchObject, stat: Stat, calculation: Function, expires: boolean) : Aura {
       var aura : Aura = new Aura(owner, stat, 0, expires);
       aura.calculation = calculation;
       aura.dynamic = true;
@@ -82,11 +82,11 @@ module Dimension {
     /**
      * Create a triggerable aura
      *
-     * @param  {GameObject} owner     The game object which owns this aura
+     * @param  {MatchObject} owner     The match object which owns this aura
      * @param  {Function}   onTrigger The function to invoke when the aura is triggered
      * @return {Aura}                 The newly created Aura
      */
-    public static createTriggerable(owner:GameObject, onTrigger:Function) : Aura {
+    public static createTriggerable(owner: MatchObject, onTrigger: Function) : Aura {
       var aura : Aura = new Aura(owner, null, 0, false);
       aura.onTrigger = onTrigger;
       return aura;
@@ -104,7 +104,7 @@ module Dimension {
         return this.amount;
       // Invoke dynamic calculation function
       else
-        return this.owner.game.invoke(this.calculation, c, null);
+        return this.owner.match.invoke(this.calculation, c, null);
     }
 
     /**
@@ -113,12 +113,12 @@ module Dimension {
      * @param {any} source The object that triggered the aura
      */
     public trigger(source: any): void {
-      // Remove the aura from the game
-      this.owner.game.removeAura(this);
+      // Remove the aura from the match
+      this.owner.match.removeAura(this);
       (<Player>this.owner).secrets.remove(this);
       // Send events
-      this.owner.onEvent(GameEvent.SECRET_REVEALED, this, source);
-      this.owner.game.invoke(this.onTrigger, this.owner, source);
+      this.owner.onEvent(MatchEvent.SECRET_REVEALED, this, source);
+      this.owner.match.invoke(this.onTrigger, this.owner, source);
     }
   }
 }

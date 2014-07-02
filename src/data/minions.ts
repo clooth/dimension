@@ -1,5 +1,3 @@
-/// <reference path="../dim.d.ts" />
-
 module Dimension {
 
   // Abomination
@@ -18,8 +16,8 @@ module Dimension {
     card.taunt  = true;
 
     // Death trigger
-    card.onDeath = function (game: Game) {
-      game.damageForEachWithFilter(TargetFilter.CHARACTER, 2, null);
+    card.onDeath = function (match: Match) {
+      match.damageForEachWithFilter(TargetFilter.CHARACTER, 2, null);
     };
   });
 

@@ -1,15 +1,15 @@
-//grunt-start
+/// <reference path="typings/lodash/lodash.d.ts" />
 /// <reference path="Collections.ts" />
 /// <reference path="Triggerable.ts" />
 /// <reference path="Aura.ts" />
-/// <reference path="GameObject.ts" />
+/// <reference path="MatchObject.ts" />
 /// <reference path="Character.ts" />
 /// <reference path="Minion.ts" />
 /// <reference path="Player.ts" />
 /// <reference path="Card.ts" />
 /// <reference path="Deck.ts" />
-/// <reference path="Game.ts" />
+/// <reference path="Match.ts" />
 /// <reference path="Spell.ts" />
 /// <reference path="Stat.ts" />
 /// <reference path="Weapon.ts" />
-//grunt-end
+/// <reference path="data/minions.ts" />

@@ -3,7 +3,7 @@ module Dimension {
   /**
    * Represents a single character object (minion or hero)
    */
-  export class Character extends GameObject {
+  export class Character extends MatchObject {
     /**
      * The name of the character
      * @type {string}
@@ -64,8 +64,8 @@ module Dimension {
      */
     public stealth: boolean = false;
 
-    constructor(game) {
-      super(game);
+    constructor(match) {
+      super(match);
     }
 
     /**
@@ -107,8 +107,12 @@ module Dimension {
 
       // Negate first time damage if protected by divine shield
       if (this.divineShield) {
+        this.match.log(this.name + " loses divine shield.");
         this.divineShield = false;
         return false;
+      }
+      else {
+        this.match.log(source.name +" deals "+ damage +"damage to "+ this.name);
       }
 
       // Calculate armor migitation for incoming damage
@@ -124,8 +128,8 @@ module Dimension {
     /**
      * Incoming damage from an attacking character
      *
-     * In addition to `combatDamage`, this function sends out `GameEvent.DAMAGE`
-     * and notifies the game about damage.
+     * In addition to `combatDamage`, this function sends out `MatchEvent.DAMAGE`
+     * and notifies the match about damage.
      *
      * @param {number}    damage        The amount of damage being inflicted
      * @param {Character} source        The attacking character
@@ -146,8 +150,8 @@ module Dimension {
       }
 
       // Notify interested parties about damage
-      this.onEvent(GameEvent.DAMAGE, this, source);
-      this.game.postDamage();
+      this.onEvent(MatchEvent.DAMAGE, this, source);
+      this.match.postDamage();
     }
 
     /**
@@ -155,7 +159,7 @@ module Dimension {
      */
     public destroy(): void {
       this.health = -1000;
-      this.game.postDamage();
+      this.match.postDamage();
     }
 
     /**
@@ -170,7 +174,7 @@ module Dimension {
       // Recover health and send events
       if (amount > 0) {
         this.health += amount;
-        this.onEvent(GameEvent.HEAL, this, null);
+        this.onEvent(MatchEvent.HEAL, this, null);
       }
     }
 
@@ -182,6 +186,8 @@ module Dimension {
      */
     public gain(attack: number, health: number): void {
       if (this.getHealth() <= 0) return;
+
+      this.match.log(this.name, "gains", "+"+ attack +"a/+", health +"h")
 
       this.attack += attack;
       this.health += health;

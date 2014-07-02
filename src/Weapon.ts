@@ -1,13 +1,13 @@
 module Dimension {
 
-  export class Weapon extends GameObject {
+  export class Weapon extends MatchObject {
     public card: Card;
     public attack: number;
     public durability: number;
     public durabilityLoss: number = 1;
 
     constructor(name: string, attack: number, durability: number, card: Card, owner: Player) {
-        super(owner.game);
+        super(owner.match);
         this.card = card;
         this.owner = this.controller = owner;
         this.attack = attack;

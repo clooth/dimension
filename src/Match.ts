@@ -4,7 +4,7 @@ module Dimension {
   /**
    * Possible states for a game object
    */
-  export enum GameState {
+  export enum MatchState {
     // Choosing spells to cast
     CAST_SPELL,
     // About to attack
@@ -22,7 +22,7 @@ module Dimension {
   /**
    * Possible events sent during a game
    */
-  export enum GameEvent {
+  export enum MatchEvent {
     // A character attacked another character
     ATTACK,
     // Damage was received by a character
@@ -77,13 +77,13 @@ module Dimension {
    * Targeting filter interface
    */
   export interface ITargetFilter {
-    (game: Game): boolean;
+    (match: Match): boolean;
   }
 
   /**
-   * Represents a single Dimension Game
+   * Represents a single Dimension Match
    */
-  export class Game {
+  export class Match {
 
     /**
      * Maximum number of minions allowed on the board
@@ -108,7 +108,7 @@ module Dimension {
     /**
      * The current game state
      */
-    public state: GameState = GameState.MULLIGAN;
+    public state: MatchState = MatchState.MULLIGAN;
 
     /**
      * List of global auras in the current game
@@ -138,34 +138,37 @@ module Dimension {
      */
     public minionCounter: number = 0;
 
+    /**
+     * Available target filter functions
+     */
     private targetFilters: {};
 
     constructor() {
       var self = this;
 
       this.targetFilters = {};
-      this.targetFilters[TargetFilter.HERO] = function(game: Game) {
+      this.targetFilters[TargetFilter.HERO] = function(match: Match) {
         return (this instanceof Player);
       };
-      this.targetFilters[TargetFilter.MINION] = function(game: Game) {
+      this.targetFilters[TargetFilter.MINION] = function(match: Match) {
           return (this instanceof Minion);
       };
-      this.targetFilters[TargetFilter.ENEMY_HERO] = function(game: Game) {
-        return (this instanceof Player) && (this != game.currentPlayer());
+      this.targetFilters[TargetFilter.ENEMY_HERO] = function(match: Match) {
+        return (this instanceof Player) && (this != match.currentPlayer());
       };
-      this.targetFilters[TargetFilter.ENEMY_MINION] = function(game: Game) {
-        return (this instanceof Minion) && (this.controller != game.currentPlayer());
+      this.targetFilters[TargetFilter.ENEMY_MINION] = function(match: Match) {
+        return (this instanceof Minion) && (this.controller != match.currentPlayer());
       };
-      this.targetFilters[TargetFilter.FRIENDLY_HERO] = function(game: Game) {
-        return (this instanceof Player) && (this.controller == game.currentPlayer());
+      this.targetFilters[TargetFilter.FRIENDLY_HERO] = function(match: Match) {
+        return (this instanceof Player) && (this.controller == match.currentPlayer());
       };
-      this.targetFilters[TargetFilter.FRIENDLY_MINION] = function(game: Game) {
-        return (this instanceof Minion) && (this.controller == game.currentPlayer());
+      this.targetFilters[TargetFilter.FRIENDLY_MINION] = function(match: Match) {
+        return (this instanceof Minion) && (this.controller == match.currentPlayer());
       };
-      this.targetFilters[TargetFilter.CHARACTER] = function(game: Game) {
+      this.targetFilters[TargetFilter.CHARACTER] = function(match: Match) {
         return (self.filter(this, TargetFilter.HERO) || self.filter(this, TargetFilter.MINION));
       };
-      this.targetFilters[TargetFilter.DAMAGED] = function(game: Game) {
+      this.targetFilters[TargetFilter.DAMAGED] = function(match: Match) {
         return this.isDamaged();
       };
     }
@@ -194,7 +197,7 @@ module Dimension {
      * Initialize a new game instance
      */
     public init(): void {
-      this.state = GameState.MULLIGAN;
+      this.state = MatchState.MULLIGAN;
       this.currentPlayerIndex = 0;
 
       this.currentPlayer().opponent = this.currentOpponent();
@@ -214,7 +217,7 @@ module Dimension {
      * Start the game normally (called after mulligan)
      */
     public start(): void {
-      this.state = GameState.CAST_SPELL;
+      this.state = MatchState.CAST_SPELL;
 
       this.currentPlayer().mana = 1;
       this.currentPlayer().maxMana = 1;
@@ -228,6 +231,8 @@ module Dimension {
     }
 
     public endTurn(): void {
+      this.log(this.currentPlayer().name +"'s turn ends");
+
       this.removeExpiredAuras();
 
       this.currentPlayerIndex = (this.currentPlayerIndex + 1) % (this.players.length);
@@ -261,11 +266,13 @@ module Dimension {
 
       // Send start of turn events
       _.each(this.players, (player: Player) => {
-        player.onEvent(GameEvent.START_OF_TURN, player, null);
+        player.onEvent(MatchEvent.START_OF_TURN, player, null);
         _.each(player.board, (minion: Minion) => {
-          minion.onEvent(GameEvent.START_OF_TURN, minion, null);
+          minion.onEvent(MatchEvent.START_OF_TURN, minion, null);
         });
       });
+
+      this.log(this.currentPlayer().name +"'s turn starts");
     }
 
     /**
@@ -276,21 +283,21 @@ module Dimension {
     public combat(attacker: Character, defender: Character): void {
       attacker.attackCount++;
       attacker.stealth = false;
-      attacker.onEvent(GameEvent.ATTACK, attacker, defender);
+      attacker.onEvent(MatchEvent.ATTACK, attacker, defender);
 
       var a1: number = attacker.getAttack();
       var a2: number = (defender instanceof Minion) ? defender.getAttack() : 0;
 
       if (a1 > 0) {
-        attacker.onEvent(GameEvent.DAMAGE_DEALT, defender, attacker);
+        attacker.onEvent(MatchEvent.DAMAGE_DEALT, defender, attacker);
         defender.combatDamage(a1, attacker);
-        defender.onEvent(GameEvent.DAMAGE, attacker, defender);
+        defender.onEvent(MatchEvent.DAMAGE, attacker, defender);
       }
 
       if (a2 > 0) {
-        defender.onEvent(GameEvent.DAMAGE_DEALT, attacker, defender);
+        defender.onEvent(MatchEvent.DAMAGE_DEALT, attacker, defender);
         attacker.combatDamage(a2, defender);
-        attacker.onEvent(GameEvent.DAMAGE, attacker, defender);
+        attacker.onEvent(MatchEvent.DAMAGE, attacker, defender);
       }
 
       this.postDamage();
@@ -309,7 +316,7 @@ module Dimension {
           if (minion.getHealth() <= 0) {
             var idx: number = minion.controller.board.indexOf(minion);
             minion.controller.board.splice(idx, 1);
-            minion.onEvent(GameEvent.DEATH, minion, null);
+            minion.onEvent(MatchEvent.DEATH, minion, null);
           }
         });
       });
@@ -365,14 +372,14 @@ module Dimension {
 
       // Work magic on all of them
       for (var ci = 0, cc = chars.size(); ci < cc; ci++) {
-        var c: Character = chars[ci];
+        var c: Character = chars.elementAtIndex(ci);
 
         // FIXME: Unfreezing shouldn't belong here
         if (c.controller == this.currentPlayer()) {
           c.unfreeze();
         }
 
-        c.onEvent(GameEvent.END_OF_TURN, c, null);
+        c.onEvent(MatchEvent.END_OF_TURN, c, null);
 
         var removeExpiredFrom: Function = (list: Collections.LinkedList<Aura>) => {
           list.forEach((aura: Aura): boolean => {
@@ -486,14 +493,14 @@ module Dimension {
 
       this.activeFilter = filter;
       this.onTargetHandler = handler;
-      this.state = GameState.TARGET;
+      this.state = MatchState.TARGET;
     }
 
     public chooseOne(s1: string, h1: Function, s2: string, h2: Function): void {
 //      this.options.clear();
 //      this.options.add(new Option(self, s1, h1));
 //      this.options.add(new Option(self, s2, h2));
-//      this.state = GameState.CHOOSE_ONE;
+//      this.state = MatchState.CHOOSE_ONE;
     }
 
 
@@ -540,7 +547,7 @@ module Dimension {
     private assignDamageForEach(list: Character[], damage: number, source: Character): void {
       _.each(list, (character: Character) => {
         character.combatDamage(damage, source);
-        character.onEvent(GameEvent.DAMAGE, character, source);
+        character.onEvent(MatchEvent.DAMAGE, character, source);
       });
       this.postDamage();
     }
@@ -569,6 +576,16 @@ module Dimension {
       var targets: Collections.LinkedList<Character> = this.validTargetsWithFilter(filter);
       var targetsArr = targets.toArray();
       this.assignDamageForEach(_.sample(targetsArr, count), damage, source)
+    }
+
+    /**
+     * !!! LOGGING
+     */
+    public matchLog: string[] = [];
+    public log(...parts: any[]): void {
+      var msg: string = parts.join(" ");
+      this.matchLog.push(_.clone(msg));
+      console.log(msg);
     }
 
   }

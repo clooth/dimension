@@ -1,10 +1,8 @@
-/// <reference path="../typings/lodash/lodash.d.ts" />
-
 module Dimension {
 
   export class Player extends Character {
     /**
-     * The player's deck, that they have constructed and selected for the game
+     * The player's deck, that they have constructed and selected for the match
      * @type {Dimension.Deck}
      */
     public deck: Deck;
@@ -73,12 +71,12 @@ module Dimension {
     public opponent: Player;
 
     /**
-     * Create a new Player to a given game with a given Deck
-     * @param game
+     * Create a new Player to a given match with a given Deck
+     * @param match
      * @param deck
      */
-    constructor(game: Game, deck: Deck) {
-      super(game);
+    constructor(match: Match, deck: Deck) {
+      super(match);
 
       this.controller = this.owner = this;
 
@@ -88,9 +86,14 @@ module Dimension {
       this.ability = Card.get(deck.hero);
 
       this.deck = deck;
+
       for (var i = 0, l = deck.spells.size(); i < l; i++) {
-        this.library.add(new Spell(deck.spells[i], this));
+        this.library.add(new Spell(deck.spells.copyAtIndex(i), this));
       }
+    }
+
+    toString(): string {
+      return this.name;
     }
 
     /**
@@ -158,7 +161,7 @@ module Dimension {
      * @returns {boolean}
      */
     public isHandFull(): boolean {
-      return (this.hand.size() >= Game.MAXIMUM_HAND_SIZE);
+      return (this.hand.size() >= Match.MAXIMUM_HAND_SIZE);
     }
     public handleFullHand(): void {}
 
@@ -166,7 +169,7 @@ module Dimension {
      * Whether or not the player's board is too full
      */
     public isBoardFull(): boolean {
-      return (this.board.length >= Game.MAXIMUM_BOARD_SIZE);
+      return (this.board.length >= Match.MAXIMUM_BOARD_SIZE);
     }
 
     /**
@@ -188,9 +191,10 @@ module Dimension {
       }
 
       // Draw card
+      this.match.log(this.owner.name, "draws a card");
       var spell: Spell = this.library.removeElementAtIndex(0);
       this.hand.add(spell);
-      this.onEvent(GameEvent.DRAW, spell, null);
+      this.onEvent(MatchEvent.DRAW, spell, null);
     }
 
     /**
@@ -233,11 +237,13 @@ module Dimension {
      * @param before
      */
     public castSpellBeforeMinion(spell: Spell, before: Minion): void {
+      this.match.log(this.name, "casts", spell.card.name);
+
       this.mana -= spell.getCost();
       this.overload += spell.card.overload;
       this.hand.remove(spell);
 
-      this.game.spellCounter++;
+      this.match.spellCounter++;
 
       if (spell.card.type == CardType.MINION) {
         this.handleCastMinion(spell, before);
@@ -267,21 +273,21 @@ module Dimension {
         this.board.push(minion);
       }
 
-      minion.onEvent(GameEvent.CAST, minion, null);
-      minion.onEvent(GameEvent.SUMMON, minion, null);
+      minion.onEvent(MatchEvent.CAST, minion, null);
+      minion.onEvent(MatchEvent.SUMMON, minion, null);
 
-      this.game.minionCounter++;
+      this.match.minionCounter++;
     }
 
     private handleCastWeapon(spell: Spell, before: Minion): void {
       this.weapon = new Weapon(spell.card.name, spell.card.attack, spell.card.durability, spell.card, this);
-      this.onEvent(GameEvent.CAST, spell, null);
-      this.game.invoke(spell.card.onCast, this.weapon, null);
+      this.onEvent(MatchEvent.CAST, spell, null);
+      this.match.invoke(spell.card.onCast, this.weapon, null);
     }
 
     private handleCastSpell(spell: Spell, before: Minion): void {
-      this.onEvent(GameEvent.CAST, spell, null);
-      this.game.invoke(spell.card.onCast, spell, null);
+      this.onEvent(MatchEvent.CAST, spell, null);
+      this.match.invoke(spell.card.onCast, spell, null);
     }
 
     /**
@@ -297,8 +303,8 @@ module Dimension {
       var card : Card = Card.get(name);
       var minion: Minion = new Minion(card.name, card.attack, card.health, card, this);
       this.board.push(minion);
-      this.game.invoke(card.onCast, minion, null);
-      minion.onEvent(GameEvent.SUMMON, minion, null);
+      this.match.invoke(card.onCast, minion, null);
+      minion.onEvent(MatchEvent.SUMMON, minion, null);
     }
 
     /**
@@ -355,9 +361,10 @@ module Dimension {
      * Use the player's hero ability
      */
     public useAbility(): void {
+      this.match.log(this.name, "uses their hero ability");
       this.mana -= this.ability.cost;
       this.abilityUsed = true;
-      this.game.invoke(this.ability.onCast, this, null);
+      this.match.invoke(this.ability.onCast, this, null);
     }
 
     /**

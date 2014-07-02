@@ -1,11 +1,11 @@
 module Dimension {
 
   class EventObject {
-    event: GameEvent;
+    event: MatchEvent;
     source: any;
     other: any;
 
-    constructor(e: GameEvent, source: any, other: any) {
+    constructor(e: MatchEvent, source: any, other: any) {
       this.event = e;
       this.source = source;
       this.other = other;
@@ -16,36 +16,39 @@ module Dimension {
     }
   }
 
-  export class GameObject {
+  /**
+   * TODO: Finish documentation
+   */
+  export class MatchObject {
     public owner: Player;
     public controller: Player;
-    public game: Game;
+    public match: Match;
 
     private eventStack: Array<EventObject> = [];
 
-    constructor(game: Game) {
-      this.game = game;
+    constructor(match: Match) {
+      this.match = match;
     }
 
     public getController(): Player {
       return (this.controller == null) ? this.owner : this.controller;
     }
 
-    public runEvent(e: GameEvent, source: any, other: any) {
+    public runEvent(e: MatchEvent, source: any, other: any) {
       var auras: Array<Aura> = this.getAuras();
       for (var i = 0, l = auras.length; i < l; i++) {
-        this.game.aura = auras[i];
-        this.game.invoke(auras[i].getTrigger(e), source, other);
+        this.match.aura = auras[i];
+        this.match.invoke(auras[i].getTrigger(e), source, other);
       }
     }
 
     /**
-     * Push a GameEvent onto this object's event stack
+     * Push a MatchEvent onto this object's event stack
      * @param e      The event to run
      * @param source The event's source object
      * @param other  The event's target object
      */
-    public onEvent(e: GameEvent, source: any, other: any): void {
+    public onEvent(e: MatchEvent, source: any, other: any): void {
       this.eventStack.push(new EventObject(e, source, other));
 
       if (this.eventStack.length > 1)
@@ -64,7 +67,6 @@ module Dimension {
      */
     private handleRunEvent(eo: EventObject): void {
       this.runEvent(eo.event, eo.source, eo.other);
-
       this.removeObject(eo, this.eventStack);
     }
 
@@ -74,7 +76,7 @@ module Dimension {
       var aura: Aura = new Aura(this, stat, amount, expires);
 
       if (global)
-        this.game.globalAuras.add(aura);
+        this.match.globalAuras.add(aura);
       else
         this.auras.add(aura);
 
@@ -85,7 +87,7 @@ module Dimension {
       var aura: Aura = Aura.createDynamic(this, stat, calculation, expires);
 
       if (global)
-        this.game.globalAuras.add(aura);
+        this.match.globalAuras.add(aura);
       else
         this.auras.add(aura);
 
@@ -102,11 +104,11 @@ module Dimension {
 
     public removeAuras(): void {
       this.auras.clear();
-      var ggAuras = this.game.globalAuras;
+      var ggAuras = this.match.globalAuras;
 
       for (var i = 0, l = ggAuras.size(); i < l; i++) {
         if (ggAuras[i].owner == this) {
-          this.removeObject(ggAuras[i], this.game.globalAuras);
+          this.removeObject(ggAuras[i], this.match.globalAuras);
         }
       }
     }
@@ -117,7 +119,7 @@ module Dimension {
       auras = auras.concat(this.auras.toArray());
       auras = auras.concat(this.getController().secrets.toArray());
       auras = auras.concat(this.getController().opponent.secrets.toArray());
-      auras = auras.concat(this.game.globalAuras.toArray());
+      auras = auras.concat(this.match.globalAuras.toArray());
 
       return auras;
     }

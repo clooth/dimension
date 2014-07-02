@@ -16,29 +16,29 @@ module Dimension {
     constructor() {
     }
 
-    public getTrigger(e : GameEvent) : Function {
+    public getTrigger(e : MatchEvent) : Function {
       switch (e) {
-        case GameEvent.ATTACK:
+        case MatchEvent.ATTACK:
           return this.onAttack;
-        case GameEvent.DAMAGE:
+        case MatchEvent.DAMAGE:
           return this.onDamage;
-        case GameEvent.DAMAGE_DEALT:
+        case MatchEvent.DAMAGE_DEALT:
           return this.onDamageDealt;
-        case GameEvent.START_OF_TURN:
+        case MatchEvent.START_OF_TURN:
           return this.onStartOfTurn;
-        case GameEvent.END_OF_TURN:
+        case MatchEvent.END_OF_TURN:
           return this.onEndOfTurn;
-        case GameEvent.DEATH:
+        case MatchEvent.DEATH:
           return this.onDeath;
-        case GameEvent.CAST:
+        case MatchEvent.CAST:
           return this.onCast;
-        case GameEvent.HEAL:
+        case MatchEvent.HEAL:
           return this.onHeal;
-        case GameEvent.DRAW:
+        case MatchEvent.DRAW:
           return this.onDraw;
-        case GameEvent.SECRET_REVEALED:
+        case MatchEvent.SECRET_REVEALED:
           return this.onSecretRevealed;
-        case GameEvent.SUMMON:
+        case MatchEvent.SUMMON:
           return this.onSummon;
       }
 

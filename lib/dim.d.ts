@@ -1,4 +1,4 @@
-/// <reference path="../typings/lodash/lodash.d.ts" />
+/// <reference path="../src/typings/lodash/lodash.d.ts" />
 declare module Collections {
     interface ICompareFunction<T> {
         (a: T, b: T): number;
@@ -44,6 +44,7 @@ declare module Collections {
         public first(): T;
         public last(): T;
         public elementAtIndex(index: number): T;
+        public copyAtIndex(index: number): T;
         public indexOf(item: T, equalsFunction?: IEqualsFunction<T>): number;
         public contains(item: T, equalsFunction?: IEqualsFunction<T>): boolean;
         public remove(item: T, equalsFunction?: IEqualsFunction<T>): boolean;
@@ -232,36 +233,36 @@ declare module Dimension {
         public onSecretRevealed: Function;
         public onSummon: Function;
         constructor();
-        public getTrigger(e: GameEvent): Function;
+        public getTrigger(e: MatchEvent): Function;
         public applyToAura(a: Aura): void;
     }
 }
 declare module Dimension {
     class Aura extends Triggerable {
-        public owner: GameObject;
+        public owner: MatchObject;
         public expires: boolean;
         public stat: Stat;
         public amount: number;
         public dynamic: boolean;
         public calculation: Function;
         public onTrigger: Function;
-        constructor(owner: GameObject, stat: Stat, amount: number, expires: boolean);
-        static createDynamic(owner: GameObject, stat: Stat, calculation: Function, expires: boolean): Aura;
-        static createTriggerable(owner: GameObject, onTrigger: Function): Aura;
+        constructor(owner: MatchObject, stat: Stat, amount: number, expires: boolean);
+        static createDynamic(owner: MatchObject, stat: Stat, calculation: Function, expires: boolean): Aura;
+        static createTriggerable(owner: MatchObject, onTrigger: Function): Aura;
         public amountFor(c: any): number;
         public trigger(source: any): void;
     }
 }
 declare module Dimension {
-    class GameObject {
+    class MatchObject {
         public owner: Player;
         public controller: Player;
-        public game: Game;
+        public match: Match;
         private eventStack;
-        constructor(game: Game);
+        constructor(match: Match);
         public getController(): Player;
-        public runEvent(e: GameEvent, source: any, other: any): void;
-        public onEvent(e: GameEvent, source: any, other: any): void;
+        public runEvent(e: MatchEvent, source: any, other: any): void;
+        public onEvent(e: MatchEvent, source: any, other: any): void;
         private handleRunEvent(eo);
         public auras: Collections.LinkedList<Aura>;
         public addAura(stat: Stat, amount: number, expires: boolean, global?: boolean): Aura;
@@ -275,7 +276,7 @@ declare module Dimension {
     }
 }
 declare module Dimension {
-    class Character extends GameObject {
+    class Character extends MatchObject {
         public name: string;
         public attack: number;
         public health: number;
@@ -286,7 +287,7 @@ declare module Dimension {
         public windfury: boolean;
         public divineShield: boolean;
         public stealth: boolean;
-        constructor(game: any);
+        constructor(match: any);
         public getAttack(): number;
         public getHealth(): number;
         public isDamaged(): boolean;
@@ -311,8 +312,9 @@ declare module Dimension {
         public defender: boolean;
         public shroud: boolean;
         constructor(name: string, attack: number, health: number, card: Card, owner: Player);
-        public onEvent(e: GameEvent, source: any, other: any): void;
+        public onEvent(e: MatchEvent, source: any, other: any): void;
         public silence(): void;
+        public unsummon(): void;
         public hasCharge(): boolean;
         public hasWindfury(): boolean;
         public isAdjacentTo(m: Minion): boolean;
@@ -334,7 +336,8 @@ declare module Dimension {
         public ability: Card;
         public abilityUsed: boolean;
         public opponent: Player;
-        constructor(game: Game, deck: Deck);
+        constructor(match: Match, deck: Deck);
+        public toString(): string;
         public getAttack(): number;
         public getMana(): number;
         public getMaxMana(): number;
@@ -420,10 +423,11 @@ declare module Dimension {
         public hero: string;
         public spells: Collections.LinkedList<Card>;
         static fromString(deckString: string): Deck;
+        static fromDOM(domId: string): Deck;
     }
 }
 declare module Dimension {
-    enum GameState {
+    enum MatchState {
         CAST_SPELL = 0,
         ATTACK = 1,
         TARGET = 2,
@@ -431,7 +435,7 @@ declare module Dimension {
         CHOOSE_ONE = 4,
         MULLIGAN = 5,
     }
-    enum GameEvent {
+    enum MatchEvent {
         ATTACK = 0,
         DAMAGE = 1,
         DAMAGE_DEALT = 2,
@@ -457,14 +461,14 @@ declare module Dimension {
         DAMAGED = 9,
     }
     interface ITargetFilter {
-        (game: Game): boolean;
+        (match: Match): boolean;
     }
-    class Game {
+    class Match {
         static MAXIMUM_BOARD_SIZE: number;
         static MAXIMUM_HAND_SIZE: number;
         public players: Player[];
         public currentPlayerIndex: number;
-        public state: GameState;
+        public state: MatchState;
         public globalAuras: Collections.LinkedList<Aura>;
         public aura: Aura;
         public spellCounter: number;
@@ -501,6 +505,8 @@ declare module Dimension {
         public spellDamageForEachWithFilter(filter: TargetFilter, damage: number, source: Character): void;
         public damageForNumberOfRandom(count: number, filter: TargetFilter, damage: number, source: Character): void;
         public spellDamageForNumberOfRandom(count: number, filter: TargetFilter, damage: number, source: Character): void;
+        public matchLog: string[];
+        public log(...parts: any[]): void;
     }
 }
 declare module Dimension {
@@ -526,7 +532,7 @@ declare module Dimension {
     }
 }
 declare module Dimension {
-    class Weapon extends GameObject {
+    class Weapon extends MatchObject {
         public card: Card;
         public attack: number;
         public durability: number;
@@ -538,4 +544,6 @@ declare module Dimension {
         public gainDurability(amount: number): void;
         public destroy(): void;
     }
+}
+declare module Dimension {
 }

@@ -53,7 +53,7 @@ module Dimension {
      * @param owner  Owner player
      */
     constructor(name: string, attack: number, health: number, card: Card, owner: Player) {
-      super(owner.game);
+      super(owner.match);
 
       this.controller = this.owner = owner;
 
@@ -78,15 +78,15 @@ module Dimension {
     } // end constructor
 
     /**
-     * Override the onEvent method to react to {GameEvent.DEATH} more accurately
-     * @param e The GameEvent to react to
+     * Override the onEvent method to react to {MatchEvent.DEATH} more accurately
+     * @param e The MatchEvent to react to
      * @param source The source object
      * @param other The other object
      */
-    public onEvent(e: GameEvent, source: any, other: any): void {
+    public onEvent(e: MatchEvent, source: any, other: any): void {
       super.onEvent(e, source, other);
 
-      if (e == GameEvent.DEATH) {
+      if (e == MatchEvent.DEATH) {
         this.removeAuras();
       }
     } // end onEvent
@@ -95,6 +95,8 @@ module Dimension {
      * Silence the minion. i.e. remove all abilities and auras
      */
     public silence(): void {
+      this.match.log(this.name, "silenced");
+
       this.taunt = false;
       this.charge = false;
       this.windfury = false;
@@ -104,6 +106,20 @@ module Dimension {
 
       this.removeAuras();
     } // end silence
+
+    /**
+     * Remove the minion from its board
+     */
+    public unsummon(): void {
+      var index = this.controller.board.indexOf(this);
+      this.controller.board.splice(index, 1);
+      this.removeAuras();
+
+      if (!this.token) {
+        this.match.log(this.name, "returned to", this.owner.name, "'s hand");
+        this.owner.hand.add(new Spell(this.card, this.owner));
+      }
+    } // end unsummon
 
     /**
      * Check if the minion has charge by itself or from auras
@@ -148,12 +164,12 @@ module Dimension {
       // Right side
       var right = index + 1;
       if (right < this.controller.board.length)
-        this.game.invoke(handler, this.controller.board[right], null);
+        this.match.invoke(handler, this.controller.board[right], null);
 
       // Left side
       var left = index - 1;
       if (left >= 0)
-        this.game.invoke(handler, this.controller.board[left], null);
+        this.match.invoke(handler, this.controller.board[left], null);
     } // end forEachNeighbor
 
     /**
