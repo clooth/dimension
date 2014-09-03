@@ -5,19 +5,19 @@
 
 ### Introduction
 
-Vie gives you a solid platform for creating your own multiplayer card games by only defining the rules of your game.
+Dimension gives you a solid platform for creating your own multiplayer card games by only defining the rules of your game.
 
-Vie provides the base functionality for:
+Dimension provides the base functionality for:
 - Handling a deck and hand
 - Handling game events and triggers
 - Different card types and dynamic spells
 - Game board logic and rules
 
-Vie can be bent into supporting all kinds of different card games via extending the Vie engine into your own game’s needs.
+Dimension can be bent into supporting all kinds of different card games via extending the Vie engine into your own game’s needs.
 
 ## Game States
 
-Vie keeps track of the state for the game depending on the players’ actions. These are useful when implementing support for dynamic actions.
+Dimension keeps track of the state for the game depending on the players’ actions. These are useful when implementing support for dynamic actions.
 
 **IDLE**
 This state is active when a player is in idle state during their turn, and hasn’t yet chosen their next action.
@@ -39,7 +39,7 @@ This state is activated when a match begins and the players are given the possib
 
 ## Game Events
 
-Vie emits and listens to multiple game events that can be triggered throughout a single battle.
+Dimension emits and listens to multiple game events that can be triggered throughout a single battle.
 
 The following events are supported out of the box:
 
